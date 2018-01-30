@@ -259,6 +259,28 @@ export class TouchBackend {
         });
     }
 
+    beginDragIfNecessary (clientOffset) {
+        const { moveStartSourceIds } = this;
+
+        // If we're not dragging and we've moved a little, that counts as a drag start
+        if (
+            !this.monitor.isDragging() &&
+            this._mouseClientOffset.hasOwnProperty('x') &&
+            moveStartSourceIds &&
+            (
+                this._mouseClientOffset.x !== clientOffset.x ||
+                this._mouseClientOffset.y !== clientOffset.y
+            )
+        ) {
+            this.moveStartSourceIds = null;
+            this.actions.beginDrag(moveStartSourceIds, {
+                clientOffset: this._mouseClientOffset,
+                getSourceClientOffset: this.getSourceClientOffset,
+                publishSource: false
+            });
+        }
+    }
+
     connectDragSource (sourceId, node, options) {
         const handleMoveStart = this.handleMoveStart.bind(this, sourceId);
         this.sourceNodes[sourceId] = node;
@@ -284,7 +306,13 @@ export class TouchBackend {
     connectDropTarget (targetId, node) {
         const handleMove = (e) => {
             let coords;
+            const clientOffset = getEventClientOffset(e);
 
+            if (!clientOffset) {
+                return;
+            }
+
+            this.beginDragIfNecessary(clientOffset);
             if (!this.monitor.isDragging()) {
                 return;
             }
@@ -397,32 +425,14 @@ export class TouchBackend {
             return;
         }
 
-        const { moveStartSourceIds, dragOverTargetIds } = this;
+        const { dragOverTargetIds } = this;
         const clientOffset = getEventClientOffset(e);
 
         if (!clientOffset) {
             return;
         }
 
-
-        // If we're not dragging and we've moved a little, that counts as a drag start
-        if (
-            !this.monitor.isDragging() &&
-            this._mouseClientOffset.hasOwnProperty('x') &&
-            moveStartSourceIds &&
-            (
-                this._mouseClientOffset.x !== clientOffset.x ||
-                this._mouseClientOffset.y !== clientOffset.y
-            )
-        ) {
-            this.moveStartSourceIds = null;
-            this.actions.beginDrag(moveStartSourceIds, {
-                clientOffset: this._mouseClientOffset,
-                getSourceClientOffset: this.getSourceClientOffset,
-                publishSource: false
-            });
-        }
-
+        this.beginDragIfNecessary(clientOffset);
         if (!this.monitor.isDragging()) {
             return;
         }
